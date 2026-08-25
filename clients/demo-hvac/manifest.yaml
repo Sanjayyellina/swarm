@@ -1,0 +1,34 @@
+# One folder per client. Custom at the surface, same machinery underneath.
+name: Demo HVAC Co (looks like Select AC)
+agent:
+  prompt: receptionist.md          # which prompt file drives this client's agent
+  verify: true                      # self-verification QA pass on final replies
+  tools:                            # what this swarm is ALLOWED to touch
+    - current_time
+    - check_availability
+    - book_appointment
+    - take_message
+    - list_appointments
+    - remember_fact                 # long-term memory across conversations
+    - schedule_task                 # future follow-ups / chases
+    - delegate                      # may hand sub-tasks to specialists below
+gates:                              # tools that pause for owner approval
+  - cancel_appointment
+specialists:                        # subagents (prompts/core/* or client override)
+  extractor:
+    model: null                     # null = default brain; set a small model in prod
+  classifier:
+    vars:
+      labels: "emergency | booking_request | price_question | complaint | callback_request | vendor_or_spam | other"
+  summarizer: {}
+  drafter:
+    vars:
+      voice_notes: "Plain-spoken Texas friendly. Short sentences. Sign-off: 'Thanks, Bill'."
+business:                           # injected into the prompt as {{variables}}
+  business_name: Demo HVAC Co
+  owner_name: Bill
+  services: AC repair, AC installation, furnace repair, seasonal tune-ups
+  hours: Monday-Friday 8am-5pm, emergency service after hours
+  service_area: Lewisville, Flower Mound, Coppell, Carrollton
+  timezone: America/Chicago            # business-local time on any server
+  slot_hours: [9, 10, 11, 13, 14, 15, 16]

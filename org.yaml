@@ -1,0 +1,62 @@
+# The company org chart. Delegation flows ONLY down this chart ("assign" to
+# your direct reports), results flow back up with review at each level.
+# Per-client org charts: copy this into clients/<name>/org.yaml to override.
+#
+# model: null = default brain (SWARM_MODEL). In production give leadership the
+# strong model and individual contributors small/cheap ones — like real
+# compensation bands.
+top: director
+
+roles:
+  director:
+    prompt: director.md
+    model: null                    # strongest model you have
+    reports: [engineering_manager, operations_manager]
+    tools: [take_message, current_time]
+    desc: full cross-department objectives needing decomposition and synthesis
+
+  engineering_manager:
+    prompt: manager.md
+    model: null
+    reports: [senior_engineer, qa_engineer]
+    tools: [current_time]
+    desc: software/tool/integration projects (managed, with QA)
+    vars:
+      department: Engineering
+      mission: build and modify software, tools, and integrations
+
+  operations_manager:
+    prompt: manager.md
+    model: null
+    reports: [senior_ops]
+    tools: [current_time]
+    desc: multi-step operational programs (schedules, documents, records)
+    vars:
+      department: Operations
+      mission: schedules, follow-ups, documents, client records
+
+  senior_engineer:
+    prompt: senior_engineer.md
+    model: null
+    reports: [junior_engineer]
+    tools: [read_file, save_file, current_time]
+
+  junior_engineer:
+    prompt: junior_engineer.md
+    model: null                    # cheapest model — narrow, supervised work
+    reports: []
+    tools: [read_file, save_file, current_time]
+
+  qa_engineer:
+    prompt: qa_engineer.md
+    model: null
+    reports: []
+    tools: [read_file, current_time]
+
+  senior_ops:
+    prompt: senior_ops.md
+    model: null
+    reports: []
+    desc: single operational jobs — schedule a chase, record facts, save a doc
+    tools: [schedule_task, remember_fact, take_message, save_file, read_file,
+            current_time]

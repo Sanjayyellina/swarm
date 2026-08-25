@@ -1,0 +1,36 @@
+# Back-office demo: an accounting firm's operations agent. No phones, no
+# receptionist — document chasing, deadlines, drafting, client facts. Proof
+# that Swarm is a general platform, not a call-answering product.
+name: Demo Accounting Firm
+agent:
+  prompt: ops.md
+  verify: true
+  tools:
+    - current_time
+    - take_message
+    - remember_fact
+    - schedule_task
+    - save_file
+    - read_file
+    - delegate
+gates:
+  - http_request                    # any external API call needs owner approval
+specialists:
+  extractor:
+    vars:
+      schema: '{"client_name": string|null, "document": string|null, "period": string|null, "deadline": string|null, "notes": string|null}'
+  chaser:
+    vars:
+      wait_days: "3"
+      send_window: "9am-6pm America/Chicago, weekdays"
+  drafter:
+    vars:
+      voice_notes: "Professional but warm. Short emails. Sign-off: 'Best, the team at Demo Accounting'."
+  summarizer: {}
+business:
+  business_name: Demo Accounting Firm
+  owner_name: Priya
+  services: bookkeeping, tax preparation, payroll, quarterly filings
+  hours: Monday-Friday 9am-6pm
+  service_area: Dallas-Fort Worth
+  timezone: America/Chicago

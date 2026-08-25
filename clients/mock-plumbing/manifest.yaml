@@ -1,0 +1,19 @@
+name: Mock Plumbing Co
+agent:
+  prompt: receptionist.md
+  verify: true
+  tools:
+  - current_time
+  - check_availability
+  - book_appointment
+  - take_message
+gates:
+- cancel_appointment
+specialists:
+  summarizer: {}
+business:
+  business_name: Mock Plumbing Co
+  owner_name: Alex
+  services: drain cleaning, water heaters
+  hours: Mon-Fri 8-5
+  service_area: Lewisville TX
