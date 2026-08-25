@@ -163,6 +163,29 @@ sandboxed validation against both test suites, human `--apply`. Per-turn LLM
 cost is logged to events and summarized in `--status`. `deploy/DEPLOY.md`
 covers VPS/systemd production setup. `CHANGELOG.md` tracks every capability.
 
+## 8c. Future seams — the 5-year map
+
+Where tomorrow's changes plug in, so nobody rewrites what was designed to swap:
+
+- **Database** → `SWARM_DB_URL` env var (storage.py backends; SQLite default,
+  Postgres included). All SQL lives in memory.py only.
+- **Model providers** → `models.yaml` aliases (per-role providers + $ prices);
+  unknown names fall through to SWARM_* env. Reference aliases anywhere a
+  `model:` appears (manifests, org.yaml, router_model).
+- **Channels** → anything POSTs `/handle` with a `channel` field; sessions are
+  channel-namespaced (`sms:+1972...`). New channel = a thin adapter, never a
+  core change.
+- **Customer identity (not built)** → a future `customers` table linking
+  channel-sessions to one person; the channel-namespaced sessions were
+  designed to make that a join, not a migration.
+- **Job queue** → worker polls via Memory methods only; a Redis/Celery swap
+  touches memory.py + worker.py, nothing else.
+- **Observability** → every action funnels through `Memory.log_event`; metrics
+  export/alerting hooks in at that single point.
+- **Dashboard auth (single token today)** → `_authed()` in server.py is the
+  one place multi-user auth replaces it.
+- **Config migrations** → every manifest carries `version:` (absent = 1).
+
 ## 9. Version history
 
 - v0.1 core: loop, tools, memory, gates, per-client folders, CLI, mock brain

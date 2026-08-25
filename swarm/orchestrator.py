@@ -46,6 +46,9 @@ class Swarm:
     def _validate_manifest(self, client_dir):
         """Fail fast with a clear message instead of a KeyError mid-call."""
         m = self.manifest or {}
+        # version stamp: tolerated if absent (treated as 1), enables future
+        # config migrations to know what they're reading.
+        m.setdefault("version", 1)
         problems = []
         if not isinstance(m.get("agent"), dict):
             problems.append("missing 'agent' section")

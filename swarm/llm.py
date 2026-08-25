@@ -20,21 +20,60 @@ class LLMResponse:
         self.tool_calls = tool_calls or []  # list of {"id", "name", "arguments"(dict)}
 
 
+def _load_registry():
+    """models.yaml: alias → provider/model/price. Optional; absent = env-only."""
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = os.path.join(root, "models.yaml")
+    if not os.path.exists(path):
+        return {}
+    import yaml
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def _env_val(v):
+    """'env:VAR' → value of $VAR; anything else passes through."""
+    if isinstance(v, str) and v.startswith("env:"):
+        return os.environ.get(v[4:], "")
+    return v
+
+
 class LLM:
     def __init__(self):
         from openai import OpenAI
+        self._OpenAI = OpenAI
+        self.registry = _load_registry()
         self.model = os.environ.get("SWARM_MODEL", "gpt-4o-mini")
         self.client = OpenAI(
             base_url=os.environ.get("SWARM_BASE_URL", "https://api.openai.com/v1"),
             api_key=os.environ.get("SWARM_API_KEY", ""),
         )
-        # Cost tracking: cumulative token usage for this instance (per client).
-        self.usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0}
+        self._alias_clients = {}
+        # Cost tracking: tokens AND dollars (prices from models.yaml).
+        self.usage = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
+                      "cost_usd": 0.0}
+
+    def _resolve(self, model):
+        """alias → (client, real model name, price_in, price_out).
+        Unknown names pass through to the default client (back-compat)."""
+        d = self.registry.get("default", {}) or {}
+        if not model:
+            return self.client, self.model, d.get("price_in", 0), d.get("price_out", 0)
+        cfg = (self.registry.get("aliases") or {}).get(model)
+        if not cfg:
+            return self.client, model, d.get("price_in", 0), d.get("price_out", 0)
+        key = (cfg.get("base_url", ""), cfg.get("api_key", ""))
+        if key not in self._alias_clients:
+            self._alias_clients[key] = self._OpenAI(
+                base_url=cfg.get("base_url") or "https://api.openai.com/v1",
+                api_key=_env_val(cfg.get("api_key", "")))
+        return (self._alias_clients[key], cfg.get("model", self.model),
+                cfg.get("price_in", 0), cfg.get("price_out", 0))
 
     def chat(self, messages, tools=None, model=None):
         import time as _t
-        kwargs = {"model": model or self.model, "messages": messages,
-                  "timeout": 60}
+        client, model_name, p_in, p_out = self._resolve(model)
+        kwargs = {"model": model_name, "messages": messages, "timeout": 60}
         if tools:
             kwargs["tools"] = tools
         # Reliability: transient API failures (rate limits, blips) get two
@@ -42,7 +81,7 @@ class LLM:
         last_err = None
         for attempt in range(3):
             try:
-                resp = self.client.chat.completions.create(**kwargs)
+                resp = client.chat.completions.create(**kwargs)
                 break
             except Exception as e:  # noqa: BLE001
                 last_err = e
@@ -53,8 +92,11 @@ class LLM:
         self.usage["calls"] += 1
         u = getattr(resp, "usage", None)
         if u:
-            self.usage["prompt_tokens"] += getattr(u, "prompt_tokens", 0) or 0
-            self.usage["completion_tokens"] += getattr(u, "completion_tokens", 0) or 0
+            pt = getattr(u, "prompt_tokens", 0) or 0
+            ct = getattr(u, "completion_tokens", 0) or 0
+            self.usage["prompt_tokens"] += pt
+            self.usage["completion_tokens"] += ct
+            self.usage["cost_usd"] += (pt * (p_in or 0) + ct * (p_out or 0)) / 1e6
         msg = resp.choices[0].message
         tool_calls = []
         for tc in (msg.tool_calls or []):

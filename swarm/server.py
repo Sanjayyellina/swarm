@@ -64,15 +64,10 @@ def serve(swarm, port):
                     return
                 m = swarm.memory
                 appts = m.appointments()[:25]
-                msgs = [dict(r) for r in m.conn.execute(
-                    "SELECT name, phone, body, created FROM messages "
-                    "ORDER BY id DESC LIMIT 25").fetchall()]
-                jobs = [dict(r) for r in m.conn.execute(
-                    "SELECT id, run_at, task, status FROM jobs "
-                    "ORDER BY id DESC LIMIT 25").fetchall()]
-                usage = m.conn.execute(
-                    "SELECT COUNT(*) FROM events WHERE tool='usage'").fetchone()[0]
-                events_n = m.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+                msgs = m.recent_messages(25)
+                jobs = m.recent_jobs(25)
+                usage = m.usage_turns()
+                events_n = m.event_count()
                 self._send(200, {
                     "client": swarm.manifest["name"],
                     "model": getattr(swarm.llm, "model", "?"),
@@ -86,10 +81,7 @@ def serve(swarm, port):
                 if not self._authed():
                     self._send(401, {"error": "unauthorized"})
                     return
-                rows = [dict(r) for r in swarm.memory.conn.execute(
-                    "SELECT actor, tool, args, result, created FROM events "
-                    "ORDER BY id DESC LIMIT 60").fetchall()]
-                self._send(200, {"events": rows})
+                self._send(200, {"events": swarm.memory.recent_events(60)})
             else:
                 self._send(404, {"error": "unknown path"})
 
@@ -119,14 +111,16 @@ def serve(swarm, port):
                 if not message:
                     self._send(400, {"error": "message required"})
                     return
-                session = str(data.get("session", "web"))[:64]
+                # Channel identity: adapters declare their channel (sms, email,
+                # web, voice...); sessions are namespaced by it so one customer
+                # keeps one history per channel today, and a future customers
+                # table can link them across channels.
+                channel = str(data.get("channel", "web"))[:16]
+                session = f"{channel}:{str(data.get('session', 'anon'))[:48]}"
                 with handle_lock:
                     reply = swarm.dispatch(message, session=session)
-                route_row = swarm.memory.conn.execute(
-                    "SELECT result FROM events WHERE tool='route' "
-                    "ORDER BY id DESC LIMIT 1").fetchone()
                 self._send(200, {"reply": reply, "session": session,
-                                 "route": route_row["result"] if route_row else None})
+                                 "route": swarm.memory.last_route()})
             except Exception as e:  # noqa: BLE001 — API must answer, never hang
                 self._send(500, {"error": str(e)})
 

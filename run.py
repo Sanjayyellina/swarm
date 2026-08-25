@@ -109,8 +109,7 @@ def main():
         a = appts[0]
         assert a["name"] == "John" and "972" in a["phone"], \
             f"TEST FAILED: booked without real contact info: {a}"
-        jobs = swarm.memory.conn.execute(
-            "SELECT COUNT(*) FROM jobs WHERE status='pending'").fetchone()[0]
+        jobs = swarm.memory.pending_jobs_count()
         assert jobs >= 1, "TEST FAILED: back-office chase was not scheduled"
         print(f"\n✅ SELF-TEST PASSED — booked {a['name']} / {a['phone']} / "
               f"{a['start']} ({a['service']}); {jobs} follow-up job(s) scheduled")
@@ -123,8 +122,7 @@ def main():
         print(f"Booked appointments ({len(appts)}):")
         for a in appts[:20]:
             print(f"  {a['start']}  {a['name']}  {a['phone']}  ({a['service']})")
-        rows = s.memory.conn.execute(
-            "SELECT name, phone, body FROM messages ORDER BY id DESC LIMIT 20").fetchall()
+        rows = s.memory.recent_messages(20)
         approvals = [r for r in rows if r["body"].startswith("APPROVAL NEEDED")]
         others = [r for r in rows if not r["body"].startswith("APPROVAL NEEDED")]
         print(f"\nPending approvals ({len(approvals)}):")
@@ -133,22 +131,24 @@ def main():
         print(f"\nRecent messages ({len(others)}):")
         for r in others:
             print(f"  {r['name']} {r['phone']}: {r['body'][:80]}")
-        jobs = s.memory.conn.execute(
-            "SELECT COUNT(*) FROM jobs WHERE status='pending'").fetchone()[0]
+        jobs = s.memory.pending_jobs_count()
         print(f"\nScheduled jobs pending: {jobs}")
         import ast
-        usage_rows = s.memory.conn.execute(
-            "SELECT result FROM events WHERE tool='usage'").fetchall()
+        usage_rows = s.memory.query(
+            "SELECT result FROM events WHERE tool='usage'")
         calls = pt = ct = 0
+        cost = 0.0
         for r in usage_rows:
             try:
                 d = ast.literal_eval(r["result"])
                 calls += d.get("calls", 0)
                 pt += d.get("prompt_tokens", 0)
                 ct += d.get("completion_tokens", 0)
+                cost += d.get("cost_usd", 0)
             except (ValueError, SyntaxError):
                 pass
-        print(f"LLM cost to date: {calls} calls, {pt} prompt + {ct} completion tokens")
+        print(f"LLM cost to date: {calls} calls, {pt} prompt + {ct} completion "
+              f"tokens, ${cost:.4f}")
         return
     if args.company:
         from swarm.company import run_company

@@ -1,4 +1,5 @@
 # One folder per client. Custom at the surface, same machinery underneath.
+version: 1                          # manifest schema version (for future migrations)
 name: Demo HVAC Co (looks like Select AC)
 agent:
   prompt: receptionist.md          # which prompt file drives this client's agent

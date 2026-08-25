@@ -1,0 +1,34 @@
+# Model registry — one place mapping model ALIASES to providers and prices.
+# Absent or empty = everything uses the SWARM_* env vars (current behavior).
+#
+# Five-year seam: run different roles on different providers SIMULTANEOUSLY
+# (orchestrator on a frontier API, router on free local, juniors on Groq)
+# by referencing aliases in manifests/org.yaml (model: fast, model: brain).
+#
+# api_key values use "env:VAR_NAME" — never put real keys in this file.
+# price_in / price_out = USD per 1M tokens; enables dollar-cost accounting
+# in --status and the dashboard.
+
+default:
+  price_in: 0        # set for your SWARM_MODEL to get $ tracking
+  price_out: 0
+
+aliases: {}
+  # brain:
+  #   base_url: https://api.anthropic.com/v1/
+  #   api_key: env:ANTHROPIC_API_KEY
+  #   model: claude-sonnet-5
+  #   price_in: 3.00
+  #   price_out: 15.00
+  # fast:
+  #   base_url: https://api.groq.com/openai/v1
+  #   api_key: env:GROQ_API_KEY
+  #   model: llama-3.3-70b-versatile
+  #   price_in: 0.59
+  #   price_out: 0.79
+  # local:
+  #   base_url: http://localhost:1234/v1
+  #   api_key: lm-studio
+  #   model: qwen3-32b
+  #   price_in: 0
+  #   price_out: 0

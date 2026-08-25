@@ -1,5 +1,33 @@
 # Changelog — every capability, tracked. Nothing extra.
 
+## v0.12 — the 5-year seams
+- **Model registry** (`models.yaml`, llm.py `_resolve`): model aliases map to
+  their OWN provider/base_url/key/prices — different roles can run on
+  different providers simultaneously (frontier orchestrator, Groq juniors,
+  free local router). Unknown names fall through to env config (back-compat).
+  Per-alias clients cached; keys referenced as `env:VAR`, never stored.
+- **Dollar-cost accounting**: usage now tracks `cost_usd` from registry
+  prices; `--status` reports $ per client alongside tokens.
+- **Channel identity**: `/handle` accepts `channel` (sms/email/web/voice...);
+  sessions are channel-namespaced, pre-wiring the future customers table.
+- **Manifest versioning**: `version:` stamp on every client manifest
+  (absent = 1) so future config migrations know what they're reading.
+- **SWARM_BIBLE §8c "Future seams"**: the audited 5-year map — DB, providers,
+  channels, customer identity, job queue, observability, auth, config —
+  each with its single swap point. WHY: change cheaply later by cutting the
+  seams now; nothing speculative was built (no unused tables, no dead knobs).
+
+## v0.11 — future-proof storage
+- **Swappable database backend** (`swarm/storage.py`): all SQL now lives in
+  `memory.py` only, written portably against a backend contract
+  (query/execute/insert). `SWARM_DB_URL` unset → SQLite (default, unchanged
+  behavior); `SWARM_DB_URL=postgres://...` → PostgreSQL backend (included,
+  needs psycopg2) with translated placeholders, portable schema/DDL, and
+  RETURNING-id inserts. Server, CLI, and dispatch no longer touch a raw
+  connection — verified zero raw-SQL usage outside the memory layer. Writes
+  are lock-serialized per backend. WHY: when mid-market arrives, migration =
+  one env var, not a rewrite.
+
 ## v0.10 — the control room
 - **Dashboard UI** (`swarm/static/index.html`, served at `/` by the existing
   API server — same port, same process, zero new dependencies): chat panel

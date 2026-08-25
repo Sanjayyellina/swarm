@@ -1,6 +1,7 @@
 # Back-office demo: an accounting firm's operations agent. No phones, no
 # receptionist — document chasing, deadlines, drafting, client facts. Proof
 # that Swarm is a general platform, not a call-answering product.
+version: 1
 name: Demo Accounting Firm
 agent:
   prompt: ops.md
